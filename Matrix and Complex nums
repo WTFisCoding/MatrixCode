@@ -1,0 +1,382 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+
+using namespace std;
+
+class Complex {
+private:
+    float real;
+    float imaginary;
+
+public:
+    Complex(float realValue = 0.0, float imaginaryValue = 0.0) {
+        real = realValue;
+        imaginary = imaginaryValue;
+    }
+
+    void set(float realValue, float imaginaryValue) {
+        real = realValue;
+        imaginary = imaginaryValue;
+    }
+
+    void disp() const {
+        cout << real << " + " << imaginary << "i" << endl;
+    }
+
+    Complex operator+(const Complex& other) const {
+        float newReal = real + other.real;
+        float newImaginary = imaginary + other.imaginary;
+        return Complex(newReal, newImaginary);
+    }
+
+    Complex operator-(const Complex& other) const {
+        float newReal = real - other.real;
+        float newImaginary = imaginary - other.imaginary;
+        return Complex(newReal, newImaginary);
+    }
+
+    Complex operator*(const Complex& other) const {
+        float newReal = (real * other.real) - (imaginary * other.imaginary);
+        float newImaginary = (real * other.imaginary) + (imaginary * other.real);
+        return Complex(newReal, newImaginary);
+    }
+
+    Complex operator/(const Complex& other) const {
+        float denominator = (other.real * other.real) + (other.imaginary * other.imaginary);
+        float newReal = ((real * other.real) + (imaginary * other.imaginary)) / denominator;
+        float newImaginary = ((imaginary * other.real) - (real * other.imaginary)) / denominator;
+        return Complex(newReal, newImaginary);
+    }
+
+    bool operator!=(const Complex& rhs) const {
+    return (real != rhs.real) || (imaginary != rhs.imaginary);
+    }
+
+    /*Complex operator-(const Complex& rhs) const {
+    return Complex(real - rhs.real, imaginary - rhs.imaginary);
+    }*/
+
+};
+
+class Matrix {
+private:
+    unsigned int rows;
+    unsigned int columns;
+    Complex** data;
+
+public:
+    Matrix(unsigned int numRows, unsigned int numColumns) {
+        rows = numRows;
+        columns = numColumns;
+        data = new Complex*[rows];
+        for (unsigned int i = 0; i < rows; i++) {
+            data[i] = new Complex[columns];
+        }
+    }
+
+    ~Matrix() {
+        for (unsigned int i = 0; i < rows; i++) {
+            delete[] data[i];
+        }
+        delete[] data;
+    }
+
+    unsigned int getRows() const {
+        return rows;
+    }
+
+    unsigned int getColumns() const {
+        return columns;
+    }
+
+    Complex& operator()(unsigned int row, unsigned int col) {
+        return data[row][col];
+    }
+
+    const Complex& operator()(unsigned int row, unsigned int col) const {
+        return data[row][col];
+    }
+
+    Matrix operator+(const Matrix& other) const {
+        if (rows != other.rows || columns != other.columns) {
+            throw runtime_error("Cannot add matrices with different dimensions.");
+        }
+
+        Matrix result(rows, columns);
+
+        for (unsigned int i = 0; i < rows; i++) {
+            for (unsigned int j = 0; j < columns; j++) {
+                result(i, j) = data[i][j] + other(i, j);
+            }
+        }
+
+        return result;
+    }
+
+    Matrix operator-(const Matrix& other) const {
+        if (rows != other.rows || columns != other.columns) {
+            throw runtime_error("Cannot subtract matrices with different dimensions.");
+        }
+
+        Matrix result(rows, columns);
+
+        for (unsigned int i = 0; i < rows; i++) {
+            for (unsigned int j = 0; j < columns; j++) {
+                result(i, j) = data[i][j] - other(i, j);
+            }
+        }
+
+        return result;
+    }
+
+    Matrix operator*(const Matrix& other) const {
+        if (columns != other.rows) {
+            throw runtime_error("Cannot multiply matrices with incompatible dimensions.");
+        }
+
+        Matrix result(rows, other.columns);
+
+        for (unsigned int i = 0; i < rows; i++) {
+            for (unsigned int j = 0; j < other.columns; j++) {
+                Complex sum;
+                for (unsigned int k = 0; k < columns; k++) {
+                    sum = sum + (data[i][k] * other(k, j));
+                }
+                result(i, j) = sum;
+            }
+        }
+
+        return result;
+    }
+
+    bool isSymmetric() const {
+        if (rows != columns) {
+            return false;
+        }
+
+        for (unsigned int i = 0; i < rows; i++) {
+            for (unsigned int j = i + 1; j < columns; j++) {
+                if (data[i][j] != data[j][i]) {
+                    return false;
+                }
+            }
+        }
+
+                return true;
+    }
+        //}
+
+        bool isSkewSymmetric() const {
+            if (rows != columns) {
+                return false;
+            }
+
+            for (unsigned int i = 0; i < rows; i++) {
+                for (unsigned int j = i + 1; j < columns; j++) {
+                    if (data[i][j] != -data[j][i]) {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        bool isUpperTriangular() const {
+            if (rows != columns) {
+                return false;
+            }
+
+            for (unsigned int i = 1; i < rows; i++) {
+                for (unsigned int j = 0; j < i; j++) {
+                    if (data[i][j] != 0) {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        bool isLowerTriangular() const {
+            if (rows != columns) {
+                return false;
+            }
+
+            for (unsigned int i = 0; i < rows; i++) {
+                for (unsigned int j = i + 1; j < columns; j++) {
+                    if (data[i][j] != 0) {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+    };
+
+    Matrix readMatrixFromFile(const string& filename) {
+        ifstream file(filename);
+        if (!file) {
+            throw runtime_error("Failed to open the file for reading.");
+        }
+
+        unsigned int rows, columns;
+        file >> rows >> columns;
+
+        Matrix matrix(rows, columns);
+
+        for (unsigned int i = 0; i < rows; i++) {
+            for (unsigned int j = 0; j < columns; j++) {
+                float real, imaginary;
+                file >> real >> imaginary;
+                matrix(i, j).set(real, imaginary);
+            }
+        }
+
+        file.close();
+
+        return matrix;
+    }
+
+    void writeMatrixToFile(const string& filename, const Matrix& matrix) {
+        ofstream file(filename);
+        if (!file) {
+            throw runtime_error("Failed to open the file for writing.");
+        }
+
+        file << matrix.getRows() << " " << matrix.getColumns() << endl;
+
+        for (unsigned int i = 0; i < matrix.getRows(); i++) {
+            for (unsigned int j = 0; j < matrix.getColumns(); j++) {
+                file << matrix(i, j).disp();
+            }
+            file << endl;
+        }
+
+        file.close();
+    }
+
+    Matrix readMatrixFromUser() {
+        unsigned int rows, columns;
+
+        cout << "Enter the number of rows: ";
+        cin >> rows;
+
+        cout << "Enter the number of columns: ";
+        cin >> columns;
+
+        Matrix matrix(rows, columns);
+
+        cout << "Enter the elements of the matrix:" << endl;
+        for (unsigned int i = 0; i < rows; i++) {
+            for (unsigned int j = 0; j < columns; j++) {
+                float real, imaginary;
+                cout << "Enter the real part of element at position (" << i << ", " << j << "): ";
+                cin >> real;
+                cout << "Enter the imaginary part of element at position (" << i << ", " << j << "): ";
+                cin >> imaginary;
+                matrix(i, j).set(real, imaginary);
+            }
+        }
+
+        return matrix;
+    }
+
+    void displayMenu() {
+        cout << "Menu:" << endl;
+        cout << "1. Read matrices from a file" << endl;
+        cout << "2. Input matrices from the user" << endl;
+        cout << "Enter your choice: ";
+    }
+
+    void displayOperationMenu() {
+        cout << "Matrix Operations:" << endl;
+        cout << "1. Addition" << endl;
+        cout << "2. Subtraction" << endl;
+        cout << "3. Multiplication" << endl;
+        cout << "4. Division" << endl;
+        cout << "Enter your choice: ";
+    }
+
+int main() {
+    int choice;
+    Matrix A, B, result;
+
+    displayMenu();
+    cin >> choice;
+
+    try {
+        switch (choice) {
+            case 1: {
+                string filename;
+                cout << "Enter the file name: ";
+                cin >> filename;
+
+                A = readMatrixFromFile(filename);
+                B = readMatrixFromFile(filename);
+
+                break;
+            }
+            case 2: {
+                cout << "Enter Matrix A:" << endl;
+                A = readMatrixFromUser();
+
+                cout << "Enter Matrix B:" << endl;
+                B = readMatrixFromUser();
+
+                break;
+            }
+            default:
+                cout << "Invalid choice. Exiting." << endl;
+                return 0;
+        }
+
+        displayOperationMenu();
+        cin >> choice;
+
+        switch (choice) {
+            case 1:
+                result = A + B;
+                break;
+            case 2:
+                result = A - B;
+                break;
+            case 3:
+                result = A * B;
+                break;
+            case 4:
+                result = A / B;
+                break;
+            default:
+                cout << "Invalid choice. Exiting." << endl;
+                return 0;
+        }
+
+        cout << "Result:" << endl;
+        for (unsigned int i = 0; i < result.getRows(); i++) {
+            for (unsigned int j = 0; j < result.getColumns(); j++) {
+                result(i, j).disp();
+            }
+            cout << endl;
+        }
+
+        if (result.isSymmetric()) {
+            cout << "Result is symmetric." << endl;
+        }
+        if (result.isSkewSymmetric()) {
+            cout << "Result is skew-symmetric." << endl;
+        }
+        if (result.isUpperTriangular()) {
+            cout << "Result is upper triangular." << endl;
+        }
+        if (result.isLowerTriangular()) {
+            cout << "Result is lower triangular." << endl;
+        }
+    } catch (const exception& e) {
+        cout << "Exception occurred: " << e.what() << endl;
+    }
+
+    return 0;
+}
